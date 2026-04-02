@@ -41,7 +41,7 @@ install_with_pm() {
 
 
 # general packets
-PKGS=(curl i3 wget python3 ripgrep tmux cmake clang git lsd bat)
+PKGS=(curl i3 wget python3 ripgrep tmux cmake clang git lsd bat kitty)
 
 
 # packet manager specific stuff
