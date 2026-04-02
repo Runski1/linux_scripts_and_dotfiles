@@ -26,11 +26,11 @@ install_with_pm() {
 
     case "$PM" in
         pacman)
-            sudo pacman -Suy --needed --noconfirm "${PKGS[@]}" base-devel
+            sudo pacman -Suy --needed --noconfirm "${PKGS[@]}"
             ;;
         apt)
             sudo apt update
-            sudo apt install -y "${PKGS[@]}" build-essential
+            sudo apt install -y "${PKGS[@]}"
             ;;
         dnf)
             sudo dnf group install "C Development Tools and Libraries" "Development Tools"
@@ -43,19 +43,23 @@ install_with_pm() {
 # general packets
 PKGS=(curl i3 wget python3 ripgrep tmux cmake clang git lsd bat)
 
-# packet manager specific packets
-case "$PM" in
-    pacman)
-        PKGS+=("base-devel ninja neovim")
-        ;;
-    apt)
-        PKGS+=("build-essential ninja-build gettext")
-        ;;
-    dnf)
-        sudo dnf group install "C Development Tools and Libraries" "Development Tools"
-        PKGS+=("ninja-build gcc make gettext glibc-gconv-extra neovim python3-neovim")
-        ;;
-esac
+
+# packet manager specific stuff
+if command -v pacman >/dev/null 2>&1; then
+    PM="pacman"
+    PKGS+=("base-devel" "ninja" "neovim")
+elif command -v apt >/dev/null 2>&1; then
+    PM="apt"
+    PKGS+=("build-essential" "ninja-build" "gettext")
+elif command -v dnf >/dev/null 2>&1; then
+    PM="dnf"
+    sudo dnf group install "C Development Tools and Libraries" "Development Tools"
+    PKGS+=("ninja-build" "gcc" "make" "gettext" "glibc-gconv-extra" "neovim" "python3-neovim")
+else
+    echo "Unsupported package manager"
+    exit 1
+fi
+echo "Packet manager detected: $PM"
 
 # ---------- install tools ----------
 TO_INSTALL=()
@@ -63,6 +67,8 @@ TO_INSTALL=()
 for pkg in "${PKGS[@]}"; do
     if ! command_exists "$pkg"; then
         TO_INSTALL+=("$pkg")
+    else
+        echo "Package already exist: $pkg"
     fi
 done
 
@@ -122,10 +128,9 @@ fi
             source "$HOME/.cargo/env"
         fi
         cargo install lsd
+    else
+        echo "lsd already installed"
     fi
-else
-    echo "lsd already installed"
-fi
 
 # config directories
 echo "Making config directories"
