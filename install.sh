@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-if [[ ! -f "./kitty.conf" || ! -f "./i3_config" || ! -f "./init.lua" ]]; then
+if [[ ! -f "kitty/kitty.conf" || ! -f "i3/i3_config" || ! -f "neovim/init.lua" ]]; then
     echo "Error: Run this script from the directory containing the config files."
     exit 1
 fi
@@ -23,13 +23,14 @@ install_with_pm() {
 
     case "$PM" in
         pacman)
-            sudo pacman -Suy --needed --noconfirm "${PKGS[@]}"
+            sudo pacman -Suy --needed --noconfirm "${PKGS[@]}" base-devel
             ;;
         apt)
             sudo apt update
-            sudo apt install -y "${PKGS[@]}"
+            sudo apt install -y "${PKGS[@]}" build-essential
             ;;
         dnf)
+            sudo dnf group install "C Development Tools and Libraries" "Development Tools"
             sudo dnf install -y "${PKGS[@]}"
             ;;
     esac
@@ -56,6 +57,8 @@ WGET="wget"
 PYTHON="python3"
 RIPGREP="ripgrep"
 TMUX="tmux"
+CMAKE="cmake"
+CLANG="clang"
 
 # ---------- install base tools ----------
 TO_INSTALL=()
@@ -65,6 +68,9 @@ command_exists wget || TO_INSTALL+=("$WGET")
 command_exists python3 || TO_INSTALL+=("$PYTHON")
 command_exists rg || TO_INSTALL+=("$RIPGREP")
 command_exists i3 || TO_INSTALL+=("$I3")
+command_exists tmux || TO_INSTALL+=("$TMUX")
+command_exists cmake || TO_INSTALL+=("$CMAKE")
+command_exists clang || TO_INSTALL+=("$CLANG")
 
 if [ ${#TO_INSTALL[@]} -ne 0 ]; then
     echo "Installing: ${TO_INSTALL[*]}"
@@ -72,28 +78,51 @@ if [ ${#TO_INSTALL[@]} -ne 0 ]; then
 else
     echo "Base tools already installed"
 fi
+# ---------- C toolchain -----------
+
+case "$PM" in
+    pacman)
+        sudo pacman -S base-devel
+        ;;
+    apt)
+        sudo apt install build-essential
+        ;;
+    dnf)
+        sudo dnf group install "C Development Tools and Libraries" "Development Tools"
+        ;;
+esac
+
 
 # ---------- install Rust ----------
 if ! command_exists rustc; then
     echo "Installing Rust via rustup..."
-    curl https://sh.rustup.rs -sSf | sh -s -- -y
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
     source "$HOME/.cargo/env"
 else
     echo "Rust already installed"
 fi
 
+# We need tree-sitter-cli for treesitter plugin
+if ! command_exists tree-sitter; then
+    echo "Installing tree-sitter-cli"
+    cargo install --locked tree-sitter-cli
+else
+    echo "tree-sitter-cli already installed"
+fi
+
 if ! command_exists nvim; then
     echo "Installing neovim..."
-    command_exists nvim || TO_INSTALL+=("$NEOVIM")
     case "$PM" in
         pacman)
             sudo pacman -S --noconfirm neovim
             ;;
         apt)
-	    image="nvim-linux-x86_64.appimage"
-            curl -LO "https://github.com/neovim/neovim/releases/download/stable/$image"
-            chmod u+x "$image"
-            sudo mv "$image" /usr/local/bin/nvim
+	    nvim="nvim-linux-x86_64"
+            curl -LO "https://github.com/neovim/neovim/releases/download/stable/$nvim.tar.gz"
+	    sudo rm -rf "/opt/$nvim"
+	    sudo tar -C /opt -xvf "$nvim.tar.gz"
+        rm -rf "$nvim.tar.gz"
+	    echo "export PATH=\"$PATH:/opt/$nvim/bin\"" >> $HOME/.bashrc
             ;;
         dnf)
             sudo dnf install neovim
@@ -133,7 +162,7 @@ fi
 
 echo "Making config directories"
 
-for dir in kitty i3 nvim; do
+for dir in kitty i3 nvim/lua/custom/plugins nvim/lua/kickstart/plugins; do
     path="$HOME/.config/$dir"
     if mkdir -p "$path"; then
         echo "OK: $path"
@@ -144,8 +173,20 @@ done
 
 echo "Creating symlinks..."
 sourcedir="$(pwd)"
-ln -sf $sourcedir/kitty.conf $HOME/.config/kitty/kitty.conf
-ln -sf $sourcedir/i3_config $HOME/.config/i3/config
-ln -sf $sourcedir/init.lua $HOME/.config/nvim/init.lua
+ln -sf $sourcedir/kitty/kitty.conf $HOME/.config/kitty/kitty.conf
+ln -sf $sourcedir/i3/i3_config $HOME/.config/i3/config
+ln -sf $sourcedir/neovim/init.lua $HOME/.config/nvim/init.lua
+ln -sf $sourcedir/neovim/lua/custom/plugins/init.lua $HOME/.config/nvim/lua/custom/plugins/init.lua
+ln -sf $sourcedir/neovim/lua/kickstart/plugins/debug.lua $HOME/.config/nvim/lua/kickstart/plugins/debug.lua
+ln -sf $sourcedir/neovim/lua/kickstart/health.lua $HOME/.config/nvim/lua/kickstart/health.lua
+ln -sf $sourcedir/neovim/lua/kickstart/plugins/debug.lua $HOME/.config/nvim/lua/kickstart/plugins/debug.lua
+ln -sf $sourcedir/neovim/lua/kickstart/plugins/gitsigns.lua $HOME/.config/nvim/lua/kickstart/plugins/gitsigns.lua
+ln -sf $sourcedir/neovim/lua/kickstart/plugins/indent_line.lua $HOME/.config/nvim/lua/kickstart/plugins/indent_line.lua
+ln -sf $sourcedir/neovim/lua/kickstart/plugins/lint.lua $HOME/.config/nvim/lua/kickstart/plugins/lint.lua
+ln -sf $sourcedir/neovim/lua/kickstart/plugins/neo-tree.lua $HOME/.config/nvim/lua/kickstart/plugins/neo-tree.lua
+source ~/.bashrc
 echo "All done!"
+echo "If you get errors regarding treesitter, try running :Lazy sync, update etc..."
+echo "source ~/.bashrc to update \$PATH"
+
 
