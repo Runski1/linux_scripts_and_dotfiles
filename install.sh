@@ -242,6 +242,7 @@ done < "$SOURCE"
 if command_exists "batcat" && ! command_exists "bat"; then
     info "Symlinking batcat to /usr/local/bin/bat"
     sudo ln -s "$(command -v batcat)" /usr/local/bin/bat
+fi
 
 # update path
 source ~/.bashrc
