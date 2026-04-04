@@ -1,13 +1,20 @@
 #!/usr/bin/env bash
+set -e
+LOG="$(pwd)/install.log"
+exec > >(tee -a "$LOG") 2>&1
+
+info() { echo -e "\033[1;32m[INFO]\033[0m $*"; }
+warn() { echo -e "\033[1;33m[WARN]\033[0m $*"; }
+error() { echo -e "\033[1;31m[ERROR]\033[0m $*"; }
 
 # Check if script is run in correct directory - relative paths are used
 if [[ ! -f "install.sh" ]]; then
-    echo "Error: Run this script from the directory containing the config files."
+    error "Error: Run this script from the directory containing the config files."
     exit 1
 fi
 # neovim on apt based distos is installed from prebuilt binary (thanks, apt)
 if [[ $(uname -m) != "x86_64" ]]; then
-	echo "Error: This script can only be run on x86_64 architecture."
+	error "Error: This script can only be run on x86_64 architecture."
 	exit 1
 fi
 
@@ -41,10 +48,11 @@ install_with_pm() {
 
 
 # general packets
-PKGS=(kitty curl wget python3 ripgrep tmux cmake clang git lsd bat)
+PKGS=(btop kitty curl wget python3 ripgrep tmux cmake clang git lsd bat)
 if $XDG_SESSION_TYPE == "x11"; then
     PKGS+=("i3")
-fi
+else
+    warn "Warning: XDG_SESSION_TYPE = {$XDG_SESSION_TYPE}, skipping i3 install"
 
 
 # packet manager specific stuff
@@ -59,10 +67,10 @@ elif command -v dnf >/dev/null 2>&1; then
     sudo dnf group install "C Development Tools and Libraries" "Development Tools"
     PKGS+=("ninja-build" "gcc" "make" "gettext" "glibc-gconv-extra" "neovim" "python3-neovim")
 else
-    echo "Unsupported package manager"
+    error "Unsupported package manager"
     exit 1
 fi
-echo "Packet manager detected: $PM"
+info "Packet manager detected: $PM"
 
 # ---------- install tools ----------
 TO_INSTALL=()
@@ -71,41 +79,41 @@ for pkg in "${PKGS[@]}"; do
     if ! command_exists "$pkg"; then
         TO_INSTALL+=("$pkg")
     else
-        echo "Package already exist: $pkg"
+        info "Package already exist: $pkg"
     fi
 done
 
 if [ ${#TO_INSTALL[@]} -ne 0 ]; then
-    echo "Installing: ${TO_INSTALL[*]}"
+    info "Installing: ${TO_INSTALL[*]}"
     install_with_pm "$PM" "${TO_INSTALL[@]}"
 else
-    echo "Base tools already installed"
+    info "Basic tools already installed"
 fi
 
 # ---------- Rust, cargo packages ----------
 if ! command_exists rustc; then
-    echo "Installing Rust via rustup..."
+    info "Installing Rust via rustup..."
     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
     export PATH="$HOME/.cargo/bin:$PATH"
     echo "export PATH=\"\$HOME/.cargo/bin:\$PATH\"" >> ~/.bashrc
 else
-    echo "Rust already installed"
+    info "Rust already installed"
 fi
 
 # We need tree-sitter-cli for treesitter plugin
 if ! command_exists tree-sitter; then
-    echo "Installing tree-sitter-cli"
+    info "Installing tree-sitter-cli"
     cargo install --locked tree-sitter-cli
 else
-    echo "tree-sitter-cli already installed"
+    info "tree-sitter-cli already installed"
 fi
 
 # apt neovim is outdated, we install the binary from github
 if ! command_exists nvim; then
-    echo "Installing neovim..."
+    info "Installing neovim..."
     case "$PM" in
         pacman)
-            echo "Neovim should already be installed!"
+            error "Neovim should already be installed!"
             exit 1
             ;;
         apt)
@@ -117,7 +125,7 @@ if ! command_exists nvim; then
         sudo ln -s /opt/nvim-linux-x86_64/bin/nvim /usr/bin/nvim
             ;;
         dnf)
-            echo "Neovim should already be installed!"
+            error "Neovim should already be installed!"
             exit 1
             ;;
     esac
@@ -126,30 +134,30 @@ fi
 
     # LSD install: fallback to cargo if not installed yet
     if ! command_exists lsd; then
-        echo "Installing lsd via cargo..."
+        info "Installing lsd via cargo..."
         if ! command_exists cargo; then
-            echo "Cargo not found, reloading Rust env..."
+            warn "Cargo not found, reloading Rust env..."
             source "$HOME/.cargo/env"
         fi
         cargo install lsd
     else
-        echo "lsd already installed"
+        info "lsd already installed"
     fi
 
 # config directories
-echo "Making config directories"
+info "Making config directories"
 for dir in kitty i3 tmux nvim/lua/custom/plugins nvim/lua/kickstart/plugins; do
     path="$HOME/.config/$dir"
     if mkdir -p "$path"; then
-        echo "OK: $path"
+        info "Created: $path"
     else
-        echo "FAIL: $path"
+        error "Path creation failed: $path"
+        exit 1
     fi
 done
-#!/usr/bin/env bash
-set -e
 
-echo "Creating config file symlinks..."
+
+info "Creating config file symlinks..."
 
 sourcedir="$(pwd)"
 # Define symlinks: key=source relative to $sourcedir, value=destination
@@ -176,13 +184,13 @@ for src in "${!SYMLINKS[@]}"; do
     dest="${SYMLINKS[$src]}"
     mkdir -p "$(dirname "$dest")"  # ensure parent directory exists
     ln -sf "$sourcedir/$src" "$dest"
-    echo "Symlinked $sourcedir/$src → $dest"
+    info "Symlinked $sourcedir/$src → $dest"
 done
 
 # Nerd font
 FONT_DIR="$HOME/.local/share/fonts"
 if ! find "$FONT_DIR" -type f -iname "*nerd*font*" | grep -q .; then
-    echo "Installing 0xProto Nerd font to $FONT_DIR"
+    info "Installing 0xProto Nerd font to $FONT_DIR"
     mkdir -p "$FONT_DIR"
     curl -LO https://github.com/ryanoasis/nerd-fonts/releases/latest/download/0xProto.tar.xz
     tar -xvf 0xProto.tar.xz -C "$FONT_DIR"
@@ -193,7 +201,7 @@ fi
 TARGET="$HOME/.bash_aliases"
 SOURCE="./aliases.sh"
 
-echo "Adding aliases to $TARGET"
+info "Adding aliases to $TARGET"
 
 # Make sure the target file exists
 touch "$TARGET"
@@ -211,8 +219,10 @@ done < "$SOURCE"
 source ~/.bashrc
 
 # for future idiot me
-echo "Installation done."
-echo "If you get errors regarding treesitter, try running :Lazy sync, update etc..."
-echo "source ~/.bashrc to update \$PATH"
+info "\nInstallation done.\n
+If you get errors regarding treesitter, try running :Lazy sync and update.
+Old kitty versions don't support in and out cursor, fix line 2627 if needed.
+remember to source bashrc!
+"
 
 
