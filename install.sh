@@ -22,6 +22,15 @@ set -e
 
 # ---------- helpers ----------
 # is packet installed
+command_exists_any() {
+    for cmd in $1; do
+        if command -v "$cmd" >/dev/null 2>&1; then
+            return 0
+        fi
+    done
+    return 1
+}
+
 command_exists() {
     command -v "$1" >/dev/null 2>&1
 }
@@ -45,12 +54,26 @@ install_with_pm() {
             ;;
     esac
 }
-
+declare -A PKG_COMMANDS=(
+    [curl]="curl"
+    [wget]="wget"
+    [git]="git"
+    [ninja-build]="ninja"
+    [build-essential]="gcc make"
+    [cmake]="cmake"
+    [ripgrep]="rg"
+    [bat]="bat batcat"
+    [tmux]="tmux"
+    [btop]="btop"
+    [kitty]="kitty"
+    [python3]="python python3"
+    [lsd]="lsd"
+)
 
 # general packets
 PKGS=(btop kitty curl wget python3 ripgrep tmux cmake clang git lsd bat)
 if $XDG_SESSION_TYPE == "x11"; then
-    PKGS+=("i3")
+    $PKG_COMMANDS[i3]="i3"
 else
     warn "Warning: XDG_SESSION_TYPE = {$XDG_SESSION_TYPE}, skipping i3 install"
 fi
@@ -75,12 +98,12 @@ info "Packet manager detected: $PM"
 
 # ---------- install tools ----------
 TO_INSTALL=()
-
 for pkg in "${PKGS[@]}"; do
-    if ! command_exists "$pkg"; then
+    cmds="${PKG_COMMANDS[$pkg]:-$pkg}"  # fallback to package name
+    if ! command_exists_any "$cmds"; then
         TO_INSTALL+=("$pkg")
     else
-        info "Package already exist: $pkg"
+        info "Package already exists: $pkg"
     fi
 done
 
@@ -215,6 +238,10 @@ while IFS= read -r line; do
         echo "$line" >> "$TARGET"
     fi
 done < "$SOURCE"
+
+if command_exists "batcat" && ! command_exists "bat"; then
+    info "Symlinking batcat to /usr/local/bin/bat"
+    sudo ln -s "$(command -v batcat)" /usr/local/bin/bat
 
 # update path
 source ~/.bashrc
