@@ -208,7 +208,7 @@ for src in "${!SYMLINKS[@]}"; do
     dest="${SYMLINKS[$src]}"
     mkdir -p "$(dirname "$dest")"  # ensure parent directory exists
     ln -sf "$sourcedir/$src" "$dest"
-    info "Symlinked $sourcedir/$src → $dest"
+    info "$sourcedir/$src → $dest"
 done
 
 # Nerd font
