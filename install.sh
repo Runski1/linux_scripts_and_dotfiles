@@ -53,6 +53,7 @@ if $XDG_SESSION_TYPE == "x11"; then
     PKGS+=("i3")
 else
     warn "Warning: XDG_SESSION_TYPE = {$XDG_SESSION_TYPE}, skipping i3 install"
+fi
 
 
 # packet manager specific stuff
@@ -222,7 +223,4 @@ source ~/.bashrc
 info "\nInstallation done.\n
 If you get errors regarding treesitter, try running :Lazy sync and update.
 Old kitty versions don't support in and out cursor, fix line 2627 if needed.
-remember to source bashrc!
-"
-
-
+remember to source bashrc!"
