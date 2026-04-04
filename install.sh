@@ -72,7 +72,7 @@ declare -A PKG_COMMANDS=(
 
 # general packets
 PKGS=(btop kitty curl wget python3 ripgrep tmux cmake clang git lsd bat)
-if $XDG_SESSION_TYPE == "x11"; then
+if [[ $XDG_SESSION_TYPE == "x11" ]]; then
     $PKG_COMMANDS[i3]="i3"
 else
     warn "Warning: XDG_SESSION_TYPE = {$XDG_SESSION_TYPE}, skipping i3 install"
