@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Check if script is run in correct directory - relative paths are used
-if [[ ! -f "kitty/kitty.conf" || ! -f "i3/i3_config" || ! -f "neovim/init.lua" ]]; then
+if [[ ! -f "install.sh" ]]; then
     echo "Error: Run this script from the directory containing the config files."
     exit 1
 fi
@@ -41,7 +41,10 @@ install_with_pm() {
 
 
 # general packets
-PKGS=(curl i3 wget python3 ripgrep tmux cmake clang git lsd bat kitty)
+PKGS=(kitty curl wget python3 ripgrep tmux cmake clang git lsd bat)
+if $XDG_SESSION_TYPE == "x11"; then
+    PKGS+=("i3")
+fi
 
 
 # packet manager specific stuff
@@ -83,7 +86,8 @@ fi
 if ! command_exists rustc; then
     echo "Installing Rust via rustup..."
     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-    source "$HOME/.cargo/env"
+    export PATH="$HOME/.cargo/bin:$PATH"
+    echo "export PATH=\"\$HOME/.cargo/bin:\$PATH\"" >> ~/.bashrc
 else
     echo "Rust already installed"
 fi
@@ -110,7 +114,7 @@ if ! command_exists nvim; then
 	    sudo rm -rf "/opt/$nvim"
 	    sudo tar -C /opt -xvf "$nvim.tar.gz"
         rm -rf "$nvim.tar.gz"
-	    echo "export PATH=\"$PATH:/opt/$nvim/bin\"" >> $HOME/.bashrc
+        sudo ln -s /opt/nvim-linux-x86_64/bin/nvim /usr/bin/nvim
             ;;
         dnf)
             echo "Neovim should already be installed!"
@@ -142,35 +146,67 @@ for dir in kitty i3 tmux nvim/lua/custom/plugins nvim/lua/kickstart/plugins; do
         echo "FAIL: $path"
     fi
 done
+#!/usr/bin/env bash
+set -e
 
-# symlinking config files to ~/.config/ 
-echo "Creating symlinks..."
+echo "Creating config file symlinks..."
+
 sourcedir="$(pwd)"
-ln -sf $sourcedir/kitty/kitty.conf $HOME/.config/kitty/kitty.conf
-ln -sf $sourcedir/i3/i3_config $HOME/.config/i3/config
-ln -sf $sourcedir/tmux/tmux.conf $HOME/.config/tmux/tmux.conf
-ln -sf $sourcedir/neovim/init.lua $HOME/.config/nvim/init.lua
-ln -sf $sourcedir/neovim/lua/custom/plugins/init.lua $HOME/.config/nvim/lua/custom/plugins/init.lua
-ln -sf $sourcedir/neovim/lua/kickstart/health.lua $HOME/.config/nvim/lua/kickstart/health.lua
-ln -sf $sourcedir/neovim/lua/kickstart/plugins/debug.lua $HOME/.config/nvim/lua/kickstart/plugins/debug.lua
-ln -sf $sourcedir/neovim/lua/kickstart/plugins/gitsigns.lua $HOME/.config/nvim/lua/kickstart/plugins/gitsigns.lua
-ln -sf $sourcedir/neovim/lua/kickstart/plugins/indent_line.lua $HOME/.config/nvim/lua/kickstart/plugins/indent_line.lua
-ln -sf $sourcedir/neovim/lua/kickstart/plugins/lint.lua $HOME/.config/nvim/lua/kickstart/plugins/lint.lua
-ln -sf $sourcedir/neovim/lua/kickstart/plugins/neo-tree.lua $HOME/.config/nvim/lua/kickstart/plugins/neo-tree.lua
-ln -sf $sourcedir/bashrc $HOME/.bashrc
+# Define symlinks: key=source relative to $sourcedir, value=destination
+declare -A SYMLINKS=(
+    ["kitty/kitty.conf"]="$HOME/.config/kitty/kitty.conf"
+    ["tmux/tmux.conf"]="$HOME/.config/tmux/tmux.conf"
+    ["neovim/init.lua"]="$HOME/.config/nvim/init.lua"
+    ["neovim/lua/custom/plugins/init.lua"]="$HOME/.config/nvim/lua/custom/plugins/init.lua"
+    ["neovim/lua/kickstart/health.lua"]="$HOME/.config/nvim/lua/kickstart/health.lua"
+    ["neovim/lua/kickstart/plugins/debug.lua"]="$HOME/.config/nvim/lua/kickstart/plugins/debug.lua"
+    ["neovim/lua/kickstart/plugins/gitsigns.lua"]="$HOME/.config/nvim/lua/kickstart/plugins/gitsigns.lua"
+    ["neovim/lua/kickstart/plugins/indent_line.lua"]="$HOME/.config/nvim/lua/kickstart/plugins/indent_line.lua"
+    ["neovim/lua/kickstart/plugins/lint.lua"]="$HOME/.config/nvim/lua/kickstart/plugins/lint.lua"
+    ["neovim/lua/kickstart/plugins/neo-tree.lua"]="$HOME/.config/nvim/lua/kickstart/plugins/neo-tree.lua"
+    ["bashrc"]="$HOME/.bashrc"
+)
 
+if [ "$XDG_SESSION_TYPE" = "x11" ]; then
+    SYMLINKS["i3/i3_config"]="$HOME/.config/i3/config"
+fi
+
+# Loop through and create symlinks
+for src in "${!SYMLINKS[@]}"; do
+    dest="${SYMLINKS[$src]}"
+    mkdir -p "$(dirname "$dest")"  # ensure parent directory exists
+    ln -sf "$sourcedir/$src" "$dest"
+    echo "Symlinked $sourcedir/$src → $dest"
+done
 
 # Nerd font
 FONT_DIR="$HOME/.local/share/fonts"
-mkdir -p "$FONT_DIR"
-curl -LO https://github.com/ryanoasis/nerd-fonts/releases/latest/download/0xProto.tar.xz
-tar -xvf 0xProto.tar.xz -C "$FONT_DIR"
-rm -rf 0xProto.tar.xz
-
+if ! find "$FONT_DIR" -type f -iname "*nerd*font*" | grep -q .; then
+    echo "Installing 0xProto Nerd font to $FONT_DIR"
+    mkdir -p "$FONT_DIR"
+    curl -LO https://github.com/ryanoasis/nerd-fonts/releases/latest/download/0xProto.tar.xz
+    tar -xvf 0xProto.tar.xz -C "$FONT_DIR"
+    rm -rf 0xProto.tar.xz
+fi
 
 # aliases to .bash_aliases
-cat ./aliases.sh > $HOME/.bash_aliases
-#
+TARGET="$HOME/.bash_aliases"
+SOURCE="./aliases.sh"
+
+echo "Adding aliases to $TARGET"
+
+# Make sure the target file exists
+touch "$TARGET"
+
+while IFS= read -r line; do
+    # Skip empty lines
+    [ -z "$line" ] && continue
+    # Skip lines that already exist
+    if ! grep -Fxq "$line" "$TARGET"; then
+        echo "$line" >> "$TARGET"
+    fi
+done < "$SOURCE"
+
 # update path
 source ~/.bashrc
 

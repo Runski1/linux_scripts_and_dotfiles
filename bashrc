@@ -42,3 +42,7 @@ shopt -s expand_aliases
 
 # Enable history appending instead of overwriting.  #139609
 shopt -s histappend
+export EDITOR=nvim
+export VISUAL=nvim
+export TERMINAL=kitty
+export PATH="$HOME/.cargo/bin:$PATH"
