@@ -187,6 +187,7 @@ sourcedir="$(pwd)"
 # Define symlinks: key=source relative to $sourcedir, value=destination
 declare -A SYMLINKS=(
     ["kitty/kitty.conf"]="$HOME/.config/kitty/kitty.conf"
+    ["kitty/catppuccin-mocha.conf"]="$HOME/.config/kitty/catppuccin-mocha.conf"
     ["tmux/tmux.conf"]="$HOME/.config/tmux/tmux.conf"
     ["neovim/init.lua"]="$HOME/.config/nvim/init.lua"
     ["neovim/lua/custom/plugins/init.lua"]="$HOME/.config/nvim/lua/custom/plugins/init.lua"
