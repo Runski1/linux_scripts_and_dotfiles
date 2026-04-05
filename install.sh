@@ -116,7 +116,7 @@ fi
 # ---------- Rust, cargo packages ----------
 if ! command_exists rustc; then
     info "Installing Rust via rustup..."
-    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
     export PATH="$HOME/.cargo/bin:$PATH"
     echo "export PATH=\"\$HOME/.cargo/bin:\$PATH\"" >> ~/.bashrc
 else
