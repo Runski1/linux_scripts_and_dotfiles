@@ -49,7 +49,6 @@ install_with_pm() {
             sudo apt install -y "${PKGS[@]}"
             ;;
         dnf)
-            sudo dnf group install "C Development Tools and Libraries" "Development Tools"
             sudo dnf install -y "${PKGS[@]}"
             ;;
     esac
@@ -88,7 +87,7 @@ elif command -v apt >/dev/null 2>&1; then
     PKGS+=("build-essential" "ninja-build" "gettext")
 elif command -v dnf >/dev/null 2>&1; then
     PM="dnf"
-    sudo dnf group install "C Development Tools and Libraries" "Development Tools"
+    sudo dnf group install "c-development" "development-tools"
     PKGS+=("ninja-build" "gcc" "make" "gettext" "glibc-gconv-extra" "neovim" "python3-neovim")
 else
     error "Unsupported package manager"
