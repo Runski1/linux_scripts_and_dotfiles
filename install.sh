@@ -244,6 +244,10 @@ if command_exists "batcat" && ! command_exists "bat"; then
     sudo ln -s "$(command -v batcat)" /usr/local/bin/bat
 fi
 
+TMUX_PATH="~/.tmux/plugins/tpm"
+info "Cloning tmux plugin manager to $TMUX_PATH"
+git clone https://github.com/tmux-plugins/tpm $TMUX_PATH
+
 # update path
 source ~/.bashrc
 
