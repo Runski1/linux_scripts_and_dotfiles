@@ -17,12 +17,14 @@ dotfiles to `$USER/.config`. *The script should be run in the same directory.*
 * wget
 * ripgrep
 * lsd
+* tldr
 
 ## dotfiles
 Dotfiles are symlinked to `$USER/.config`. Neovim config used kickstart.nvim as 
 a base, and has some additions made to it. i3 and kitty configurations are light, 
-only some keybind stuff
+only some keybind stuff.
+Tmux might require reoading (mod+I) for `tpm` to install all required plugins.
 
-# Todo:
-aliases
-Fix treesitter problems - include the plugin configurations to repo?
+## Aliases
+Aliases are read from `aliases.sh` and appended to `.bash_aliases` if they don't 
+exist there.

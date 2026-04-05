@@ -154,6 +154,18 @@ if ! command_exists nvim; then
     esac
 fi
 
+# tldr pages
+if ! command_exists tldr; then
+    info "Installing tldr..."
+    if ! command_exists cargo; then
+        warn "Cargo not found, reloading Rust env..."
+        source "$HOME/.cargo/env"
+    fi
+    cargo install tlrc
+else
+    info "tldr already installed"
+fi
+
 
     # LSD install: fallback to cargo if not installed yet
     if ! command_exists lsd; then
